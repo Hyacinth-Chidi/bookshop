@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ADMIN & SUB-ADMIN MODEL
+
+model Admin {
+  id               String    @id @default(uuid()) @db.Uuid
+  username         String    @unique
+  email            String    @unique
+  password         String
+  role             String    @default("sub-admin") // "admin" or "sub-admin"
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@map("admins")
+}
+
+// BOOK MODEL (ACTIVE)
+
+model Book {
+  id          String  @id @default(uuid()) @db.Uuid
+  title       String
+  description String?
+  price       Float
+  courseCode  String
+
+  // Relations
+  facultyId    String  @db.Uuid
+  departmentId String? @db.Uuid
+
+  faculty    Faculty     @relation(fields: [facultyId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+
+  level       String
+  semester    String
+  session     String
+  frontCover  String
+  backCover   String?
+  hasManual   Boolean @default(false)
+  manualPrice Float? // Price for manual if hasManual is true
+
+  courseLecturer String? // Name of the lecturer taking the course
+
+  // Manual details (only if hasManual = true)
+  manualFrontCover String?
+
+  quantity  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  purchases Purchase[]
+
+  // Indexes for fast search and filtering
+  @@index([title])
+  @@index([courseCode])
+  @@index([facultyId])
+  @@index([departmentId])
+  @@index([level])
+  @@index([semester])
+  @@index([session])
+  @@map("books")
+}
+
+// STUDENT MODEL (INACTIVE - Future Feature)
+
+model Student {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  regNo            String    @unique
+  password         String
+  level            String
+  resetToken       String?
+  resetTokenExpiry DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  purchases Purchase[]
+
+  @@map("students")
+}
+
+// PURCHASE MODEL (INACTIVE - Future Feature)
+model Purchase {
+  id            String   @id @default(uuid()) @db.Uuid
+  studentId     String   @db.Uuid
+  bookId        String   @db.Uuid
+  quantity      Int      @default(1)
+  totalAmount   Float
+  paymentStatus String   @default("pending")
+  paystackRef   String?
+  purchasedAt   DateTime @default(now())
+
+  student Student @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  book    Book    @relation(fields: [bookId], references: [id], onDelete: Cascade)
+
+  @@map("purchases")
+}
+
+model SystemSettings {
+  id              String   @id @default(uuid()) @db.Uuid
+  currentSession  String   @default("2024/2025")
+  currentSemester String   @default("First Semester")
+  updatedAt       DateTime @updatedAt
+
+  @@map("system_settings")
+}
+
+model Faculty {
+  id          String       @id @default(uuid()) @db.Uuid
+  name        String       @unique
+  departments Department[]
+  books       Book[]
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@map("faculties")
+}
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  facultyId String   @db.Uuid
+  faculty   Faculty  @relation(fields: [facultyId], references: [id], onDelete: Cascade)
+  books     Book[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([name, facultyId])
+  @@map("departments")
+}
