@@ -105,10 +105,27 @@ export const getAllBooks = async (query = {}) => {
   const where = {};
 
   if (search) {
-    where.OR = [
-      { title: { contains: search, mode: 'insensitive' } },
-      { courseCode: { contains: search, mode: 'insensitive' } },
+    // Normalize search: create variations for course codes (e.g., CSC101 -> CSC 101, CSC 101 -> CSC101)
+    const searchTrimmed = search.trim();
+    const searchNoSpaces = searchTrimmed.replace(/\s+/g, '');
+    // Try to add space between letters and numbers (CSC101 -> CSC 101)
+    const searchWithSpace = searchTrimmed.replace(/([A-Za-z]+)(\d+)/g, '$1 $2');
+    
+    // Build OR conditions for flexible matching
+    const searchConditions = [
+      { title: { contains: searchTrimmed, mode: 'insensitive' } },
+      { courseCode: { contains: searchTrimmed, mode: 'insensitive' } },
     ];
+    
+    // Add variations if they differ from original
+    if (searchNoSpaces !== searchTrimmed) {
+      searchConditions.push({ courseCode: { contains: searchNoSpaces, mode: 'insensitive' } });
+    }
+    if (searchWithSpace !== searchTrimmed && searchWithSpace !== searchNoSpaces) {
+      searchConditions.push({ courseCode: { contains: searchWithSpace, mode: 'insensitive' } });
+    }
+    
+    where.OR = searchConditions;
   }
 
   if (courseCode) where.courseCode = courseCode;
@@ -306,7 +323,7 @@ export const getFilterOptions = async () => {
   const [departments, faculties, levels, semesters, sessions] = await Promise.all([
     prisma.department.findMany({
       orderBy: { name: 'asc' },
-      select: { id: true, name: true }
+      select: { id: true, name: true, facultyId: true }
     }),
     prisma.faculty.findMany({
       orderBy: { name: 'asc' },

@@ -27,8 +27,8 @@ export const createBookSchema = z.object({
     .optional(),
   facultyId: z.string()
     .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid Faculty ID (UUID expected)'),
-  level: z.enum(['100L', '200L', '300L', '400L', '500L'], {
-    errorMap: () => ({ message: 'Level must be one of: 100L, 200L, 300L, 400L, 500L' }),
+  level: z.enum(['100 Level', '200 Level', '300 Level', '400 Level', '500 Level'], {
+    errorMap: () => ({ message: 'Level must be one of: 100 Level, 200 Level, 300 Level, 400 Level, 500 Level' }),
   }),
   semester: z.enum(['First Semester', 'Second Semester'], {
     errorMap: () => ({ message: 'Semester must be either "First Semester" or "Second Semester"' }),
@@ -85,7 +85,7 @@ export const updateBookSchema = z.object({
   facultyId: z.string()
     .regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, 'Invalid Faculty ID (UUID expected)')
     .optional(),
-  level: z.enum(['100L', '200L', '300L', '400L', '500L'])
+  level: z.enum(['100 Level', '200 Level', '300 Level', '400 Level', '500 Level'])
     .optional(),
   semester: z.enum(['First Semester', 'Second Semester'])
     .optional(),
@@ -122,7 +122,7 @@ export const bookSearchSchema = z.object({
   courseCode: z.string().trim().toUpperCase().optional(),
   departmentId: z.string().optional().transform(val => val === '' ? undefined : val).pipe(z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).optional()),
   facultyId: z.string().optional().transform(val => val === '' ? undefined : val).pipe(z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i).optional()),
-  level: z.string().regex(/^\d{3}L$/).trim().optional(),
+  level: z.string().regex(/^\d{3} Level$/).trim().optional(),
   semester: z.enum(['First Semester', 'Second Semester']).optional(),
   session: z.string().regex(/^\d{4}\/\d{4}$/).trim().optional(),
   hasManual: z.string().transform((val) => val === 'true').optional(),

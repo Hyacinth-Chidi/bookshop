@@ -333,11 +333,11 @@ export default function BookForm({
     label: d.name,
   }));
   const levelOptions = [
-    { value: "100L", label: "100L" },
-    { value: "200L", label: "200L" },
-    { value: "300L", label: "300L" },
-    { value: "400L", label: "400L" },
-    { value: "500L", label: "500L" },
+    { value: "100 Level", label: "100 Level" },
+    { value: "200 Level", label: "200 Level" },
+    { value: "300 Level", label: "300 Level" },
+    { value: "400 Level", label: "400 Level" },
+    { value: "500 Level", label: "500 Level" },
   ];
   const semesterOptions = [
     { value: "First Semester", label: "First Semester" },

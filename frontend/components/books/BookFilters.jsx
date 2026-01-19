@@ -22,7 +22,9 @@ export default function BookFilters({ filters, onFilterChange, onClearFilters })
 
   const departmentOptions = [
     { value: '', label: 'All Departments' },
-    ...(options?.departments || []).map(d => ({ value: d.id, label: d.name }))
+    ...(options?.departments || [])
+      .filter(d => !filters.facultyId || d.facultyId === filters.facultyId)
+      .map(d => ({ value: d.id, label: d.name }))
   ];
 
   const levelOptions = [
