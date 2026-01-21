@@ -91,30 +91,40 @@ const DEPT_CODES = {
 };
 
 // Generate course code from department name
-const getCourseCode = (deptName, level, courseNum) => {
+const getCourseCode = (deptName, levelStr, semester, courseNum) => {
   const code = DEPT_CODES[deptName] || deptName.substring(0, 3).toUpperCase();
-  return `${code} ${level}0${courseNum}`;
-};
-
-const getRandomLecturer = () => {
-  const lecturers = [
-    'Dr. Okonkwo A.B.', 'Prof. Nnamdi C.D.', 'Dr. Mrs. Obi E.F.', 'Prof. Eze G.H.',
-    'Dr. Chukwu I.J.', 'Prof. Ibrahim K.L.', 'Dr. Adebayo M.N.', 'Prof. Okafor O.P.',
-    'Dr. Nneka Q.R.', 'Prof. Uche S.T.', 'Dr. Amaka U.V.', 'Prof. Emeka W.X.',
-    'Dr. Ngozi Y.Z.', 'Dr. Kalu A.A.', 'Prof. Okoro B.B.', 'Dr. Mrs. Eze C.C.'
-  ];
-  return lecturers[Math.floor(Math.random() * lecturers.length)];
+  const levelDigit = levelStr.substring(0, 1);
+  
+  // Determine suffix based on semester: 
+  // First Semester -> Odd (1, 3, 5...)
+  // Second Semester -> Even (2, 4, 6...)
+  let suffix;
+  if (semester === 'First Semester') {
+    suffix = (courseNum * 2) - 1; // 1, 3, 5
+  } else {
+    suffix = courseNum * 2; // 2, 4, 6
+  }
+  
+  return `${code} ${levelDigit}0${suffix}`;
 };
 
 // Book templates for each level
 const BOOK_TEMPLATES = [
   // 100 Level Books
   { level: '100 Level', semester: 'First Semester', titlePrefix: 'Introduction to', hasManual: true },
-  { level: '100 Level', semester: 'First Semester', titlePrefix: 'Fundamentals of', hasManual: false },
-  { level: '100 Level', semester: 'Second Semester', titlePrefix: 'Principles of', hasManual: true },
+  { level: '100 Level', semester: 'Second Semester', titlePrefix: 'Fundamentals of', hasManual: false },
+  
   // 200 Level Books
-  { level: '200 Level', semester: 'First Semester', titlePrefix: 'Advanced', hasManual: false },
-  { level: '200 Level', semester: 'Second Semester', titlePrefix: 'Applied', hasManual: true },
+  { level: '200 Level', semester: 'First Semester', titlePrefix: 'Intermediate', hasManual: true },
+  { level: '200 Level', semester: 'Second Semester', titlePrefix: 'Applications of', hasManual: false },
+
+  // 300 Level Books
+  { level: '300 Level', semester: 'First Semester', titlePrefix: 'Advanced', hasManual: true },
+  { level: '300 Level', semester: 'Second Semester', titlePrefix: 'Research Methods in', hasManual: false },
+
+  // 400 Level Books
+  { level: '400 Level', semester: 'First Semester', titlePrefix: 'Special Topics in', hasManual: true },
+  { level: '400 Level', semester: 'Second Semester', titlePrefix: 'Project Management for', hasManual: false },
 ];
 
 const seedBooks = async () => {
@@ -144,15 +154,17 @@ const seedBooks = async () => {
     for (const dept of departments) {
       for (let i = 0; i < BOOK_TEMPLATES.length; i++) {
         const template = BOOK_TEMPLATES[i];
-        const levelNum = parseInt(template.level);
-        const courseNum = i + 1;
+        
+        // Use 1 as courseNum since we have one book per semester/level in templates
+        // This will generate 101/103 for 1st sem and 102/104 for 2nd sem
+        const courseNum = 1;
 
         await prisma.book.create({
           data: {
             title: `${template.titlePrefix} ${dept.name}`,
             description: `A comprehensive textbook covering ${template.titlePrefix.toLowerCase()} ${dept.name}. Designed for ${template.level} students.`,
             price: 1500 + (i * 500) + Math.floor(Math.random() * 500),
-            courseCode: getCourseCode(dept.name, levelNum || 1, courseNum),
+            courseCode: getCourseCode(dept.name, template.level, template.semester, courseNum),
             facultyId: dept.facultyId,
             departmentId: dept.id,
             level: template.level,
