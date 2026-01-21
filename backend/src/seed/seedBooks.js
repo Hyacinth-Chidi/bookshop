@@ -108,6 +108,16 @@ const getCourseCode = (deptName, levelStr, semester, courseNum) => {
   return `${code} ${levelDigit}0${suffix}`;
 };
 
+const getRandomLecturer = () => {
+  const lecturers = [
+    'Dr. Okonkwo A.B.', 'Prof. Nnamdi C.D.', 'Dr. Mrs. Obi E.F.', 'Prof. Eze G.H.',
+    'Dr. Chukwu I.J.', 'Prof. Ibrahim K.L.', 'Dr. Adebayo M.N.', 'Prof. Okafor O.P.',
+    'Dr. Nneka Q.R.', 'Prof. Uche S.T.', 'Dr. Amaka U.V.', 'Prof. Emeka W.X.',
+    'Dr. Ngozi Y.Z.', 'Dr. Kalu A.A.', 'Prof. Okoro B.B.', 'Dr. Mrs. Eze C.C.'
+  ];
+  return lecturers[Math.floor(Math.random() * lecturers.length)];
+};
+
 // Book templates for each level
 const BOOK_TEMPLATES = [
   // 100 Level Books
