@@ -5,8 +5,8 @@ import { successResponse, errorResponse } from '../utils/response.util.js';
 
 const router = express.Router();
 
-// Get System Settings
-router.get('/', authenticate, async (req, res) => {
+// Get System Settings (Public - needed for print page)
+router.get('/', async (req, res) => {
     try {
         let settings = await prisma.systemSettings.findFirst();
 

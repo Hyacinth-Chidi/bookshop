@@ -89,6 +89,11 @@ export default function HomePage() {
                     Browse Books
                   </Button>
                 </Link>
+                <Link href="/print-books" className="w-full sm:w-auto">
+                  <Button variant="outline" size="lg" className="w-full sm:w-auto bg-white/10 border-white/20 text-white hover:bg-white/20 justify-center">
+                    Get Book List
+                  </Button>
+                </Link>
               </div>
             </div>
           </div>

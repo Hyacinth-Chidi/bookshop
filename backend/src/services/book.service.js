@@ -2,6 +2,27 @@
 import prisma from '../config/database.js';
 import { uploadImage, deleteImage, extractPublicId } from '../config/cloudinary.js';
 import { deleteFile } from '../utils/upload.util.js';
+import { getCache, setCache, deleteCache } from '../config/redis.js';
+
+// Cache keys
+const CACHE_KEYS = {
+  FILTER_OPTIONS: 'filters:options',
+  BOOKS_PREFIX: 'books:',
+};
+
+// Cache TTL in seconds
+const CACHE_TTL = {
+  FILTER_OPTIONS: 600, // 10 minutes
+  BOOKS: 300, // 5 minutes
+};
+
+/**
+ * Invalidate book-related caches
+ */
+const invalidateBookCaches = async () => {
+  await deleteCache(CACHE_KEYS.FILTER_OPTIONS);
+  await deleteCache(`${CACHE_KEYS.BOOKS_PREFIX}*`);
+};
 
 export const createBook = async (data, files) => {
   try {
@@ -73,6 +94,9 @@ export const createBook = async (data, files) => {
     if (files.frontCover) deleteFile(files.frontCover[0].path);
     if (files.backCover) deleteFile(files.backCover[0].path);
     if (files.manualFrontCover) deleteFile(files.manualFrontCover[0].path);
+
+    // Invalidate cache
+    await invalidateBookCaches();
 
     return book;
   } catch (error) {
@@ -275,6 +299,9 @@ export const updateBook = async (id, data, files = {}) => {
     if (files.backCover) deleteFile(files.backCover[0].path);
     if (files.manualFrontCover) deleteFile(files.manualFrontCover[0].path);
 
+    // Invalidate cache
+    await invalidateBookCaches();
+
     return updatedBook;
   } catch (error) {
     // Clean up temporary files on error
@@ -316,10 +343,20 @@ export const deleteBook = async (id) => {
   await prisma.book.delete({
     where: { id },
   });
+
+  // Invalidate cache
+  await invalidateBookCaches();
 };
 
 //Get unique filter options (for frontend filters)
 export const getFilterOptions = async () => {
+  // Try to get from cache first
+  const cached = await getCache(CACHE_KEYS.FILTER_OPTIONS);
+  if (cached) {
+    return cached;
+  }
+
+  // Cache miss - fetch from database
   const [departments, faculties, levels, semesters, sessions] = await Promise.all([
     prisma.department.findMany({
       orderBy: { name: 'asc' },
@@ -343,11 +380,16 @@ export const getFilterOptions = async () => {
     }),
   ]);
 
-  return {
+  const result = {
     departments,
     faculties,
     levels: levels.map((l) => l.level).sort(),
     semesters: semesters.map((s) => s.semester),
     sessions: sessions.map((s) => s.session).sort().reverse(),
   };
+
+  // Store in cache
+  await setCache(CACHE_KEYS.FILTER_OPTIONS, result, CACHE_TTL.FILTER_OPTIONS);
+
+  return result;
 };

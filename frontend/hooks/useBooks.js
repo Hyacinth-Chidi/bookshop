@@ -23,11 +23,14 @@ export const bookKeys = {
 /**
  * Fetch all books with filters
  */
-export function useBooks(filters = {}) {
+export function useBooks(filters = {}, options = {}) {
+  const { enabled = true, ...restOptions } = options;
   return useQuery({
     queryKey: bookKeys.list(filters),
     queryFn: () => getAllBooks(filters),
     select: (data) => ({ books: data.data, pagination: data.pagination }),
+    enabled: Boolean(enabled),
+    ...restOptions,
   });
 }
 
