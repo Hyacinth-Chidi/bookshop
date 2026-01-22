@@ -116,15 +116,9 @@ export default function PrintBooksPage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
 
           <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-primary/10 rounded-full mb-4">
-              <FileText className="w-8 h-8 text-primary" />
-            </div>
             <h1 className="text-3xl font-bold text-neutral-900 mb-2">
               Departmental Book List
             </h1>
-            <p className="text-neutral-500 max-w-md mx-auto">
-              Access the approved schedule of required textbooks for your department and level for the current academic session.
-            </p>
           </div>
 
 
