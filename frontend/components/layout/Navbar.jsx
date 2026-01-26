@@ -47,12 +47,7 @@ export default function Navbar() {
             >
               Browse Books
             </Link>
-            <Link
-              href="/about"
-              className={`text-sm font-medium transition-smooth ${isActive('/about') ? 'text-primary' : 'text-neutral-700 hover:text-primary'}`}
-            >
-              About
-            </Link>
+           
 
             <Link
               href="/sales-template"
@@ -61,6 +56,19 @@ export default function Navbar() {
               Sales Template
             </Link>
 
+             <Link
+              href="/about"
+              className={`text-sm font-medium transition-smooth ${isActive('/about') ? 'text-primary' : 'text-neutral-700 hover:text-primary'}`}
+            >
+              About
+            </Link>
+
+            <Link
+              href="/report"
+              className={`text-sm font-medium transition-smooth ${isActive('/report') ? 'text-primary' : 'text-neutral-700 hover:text-primary'}`}
+            >
+              Full Book List
+            </Link>
 
           </div>
 
@@ -111,6 +119,14 @@ export default function Navbar() {
               onClick={() => setIsOpen(false)}
             >
               About
+            </Link>
+
+            <Link
+              href="/report"
+              className={`block px-3 py-2 rounded-lg text-sm font-medium ${isActive('/report') ? 'bg-primary text-white' : 'text-neutral-700 hover:bg-neutral-100'}`}
+              onClick={() => setIsOpen(false)}
+            >
+              Full Book List
             </Link>
 
 

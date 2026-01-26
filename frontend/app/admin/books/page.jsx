@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { useBooks, useDeleteBook } from '@/hooks/useBooks';
+import { useBooks, useDeleteBook, useFilterOptions } from '@/hooks/useBooks';
 import { useFaculties } from '@/hooks/useFaculties';
+import { useSystemSettings } from '@/hooks/useSettings';
+import { useAdminPreferences } from '@/context/AdminPreferencesContext';
 import Button from '@/components/shared/Button';
 import Select from '@/components/shared/Select';
 import DeleteConfirmModal from '@/components/shared/DeleteConfirmModal';
 import { formatPrice } from '@/lib/utils';
-import { Plus, Edit, Trash2, Search, MoreVertical } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, MoreVertical, Loader2, Filter } from 'lucide-react';
 
 // Actions Dropdown Component - Fixed position overlay
 function ActionsDropdown({ book, onDelete }) {
@@ -101,22 +103,44 @@ function ActionsDropdown({ book, onDelete }) {
 
 export default function AdminBooksPage() {
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, book: null });
+  const [showFilters, setShowFilters] = useState(false);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-  const [selectedFaculty, setSelectedFaculty] = useState('');
-  const [selectedDepartment, setSelectedDepartment] = useState('');
-  const [availableDepartments, setAvailableDepartments] = useState([]);
+  // Use global preferences state
+  const { 
+    selectedSession, setSelectedSession, 
+    selectedSemester, setSelectedSemester,
+    selectedFaculty, setSelectedFaculty,
+    selectedDepartment, setSelectedDepartment,
+    selectedLevel, setSelectedLevel
+  } = useAdminPreferences();
+
+  // Derived state for available departments
+  const availableDepartments = selectedFaculty 
+    ? faculties.find(f => f.id === selectedFaculty)?.departments || [] 
+    : [];
+  
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
 
   // TanStack Query hooks
   const { data: faculties = [] } = useFaculties();
-  const { data, isLoading } = useBooks({
-    limit: 100,
+  const { data: filterOptions } = useFilterOptions();
+  const { data: settings } = useSystemSettings();
+  const { data, isLoading, isFetching } = useBooks({
+    page,
+    limit,
     search: debouncedSearch,
     facultyId: selectedFaculty,
     departmentId: selectedDepartment,
+    level: selectedLevel || undefined,
+    session: selectedSession || settings?.currentSession,
+    semester: selectedSemester || settings?.currentSemester,
   });
   const books = data?.books || [];
+  const pagination = data?.pagination || { page: 1, limit: 50, totalPages: 1, total: 0 };
 
   const deleteBookMutation = useDeleteBook();
 
@@ -124,6 +148,7 @@ export default function AdminBooksPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchQuery);
+      setPage(1); // Reset to page 1 on search
     }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
@@ -132,8 +157,7 @@ export default function AdminBooksPage() {
     const facultyId = e.target.value;
     setSelectedFaculty(facultyId);
     setSelectedDepartment('');
-    const faculty = faculties.find(f => f.id === facultyId);
-    setAvailableDepartments(faculty?.departments || []);
+    setPage(1); // Reset to page 1 on filter
   };
 
   const closeDeleteModal = () => {
@@ -158,52 +182,149 @@ export default function AdminBooksPage() {
     ...availableDepartments.map(d => ({ value: d.id, label: d.name }))
   ];
 
-  return (
-    <div className="p-4 sm:p-6 lg:p-8">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-        <h1 className="text-2xl sm:text-3xl font-bold text-neutral-900">Manage Books</h1>
-        <Link href="/admin/books/create">
-          <Button variant="primary" className="w-full sm:w-auto">
-            <Plus className="w-4 h-4 sm:w-5 sm:h-5 mr-2" />
-            Add New Book
-          </Button>
-        </Link>
-      </div>
+  // Level options from filter options
+  const levelOptions = [
+    { value: '', label: 'All Levels' },
+    ...(filterOptions?.levels || []).map(l => ({ value: l, label: l }))
+  ];
 
-      <div className="bg-white p-3 sm:p-4 rounded-lg shadow-sm mb-4 sm:mb-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-        <div className="relative sm:col-span-2">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-neutral-500" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search by title or course code..."
-            className="w-full pl-9 sm:pl-10 pr-4 py-2 text-sm border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+  // Session options
+  const sessionOptions = [
+    { value: '', label: `Current (${settings?.currentSession || '...'})` },
+    ...(filterOptions?.sessions || [])
+      .filter(s => s !== settings?.currentSession)
+      .map(s => ({ value: s, label: s }))
+  ];
+
+  // Semester options (static)
+  const semesterOptions = [
+    { value: '', label: `Current (${settings?.currentSemester || '...'})` },
+    { value: 'First Semester', label: 'First Semester' },
+    { value: 'Second Semester', label: 'Second Semester' },
+  ].filter((opt, index) => {
+    if (index === 0) return true;
+    return opt.value !== settings?.currentSemester;
+  });
+
+  return (
+    <div className="h-[calc(100vh-64px)] lg:h-screen flex flex-col p-2 sm:p-3 pb-1 sm:pb-2 overflow-hidden">
+      {/* Unified Header & Filters Card */}
+      <div className="bg-white p-3 rounded-lg shadow-sm mb-3">
+        {/* Header Row */}
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold text-neutral-900">Manage Books</h1>
+            {isFetching && !isLoading && <Loader2 className="w-4 h-4 animate-spin text-neutral-400" />}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`p-2 rounded-lg transition-colors border lg:hidden ${
+                showFilters || searchQuery || selectedFaculty || selectedLevel || selectedSession
+                  ? 'bg-primary/5 border-primary/20 text-primary'
+                  : 'hover:bg-neutral-50 border-neutral-200 text-neutral-600'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+            </button>
+            <Link href="/admin/books/create">
+              <Button variant="primary" className="text-sm py-2 px-3">
+                <Plus className="w-4 h-4 mr-1" />
+                Add Book
+              </Button>
+            </Link>
+          </div>
+        </div>
+
+        {/* Filters Grid */}
+        <div className={`grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2 items-end transition-all ${
+          showFilters ? 'block' : 'hidden lg:grid'
+        }`}>
+        <div className="col-span-2 md:col-span-3 lg:col-span-1">
+          <label className="block text-xs font-medium text-neutral-500 mb-1">Search</label>
+          <div className="relative">
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3.5 h-3.5 text-neutral-500" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Title/Code..."
+              className="w-full pl-7 pr-2 py-1.5 text-xs sm:text-sm border border-neutral-200 rounded-md focus:outline-none focus:ring-2 focus:ring-primary h-8 sm:h-9"
+            />
+          </div>
+        </div>
+        
+        <div>
+          <label className="block text-xs font-medium text-neutral-500 mb-1">Faculty</label>
+          <Select
+            name="faculty"
+            value={selectedFaculty}
+            onChange={handleFacultyChange}
+            options={facultyOptions}
+            placeholder="All"
+            className="text-xs sm:text-sm py-1 h-8 sm:h-9"
           />
         </div>
-        <Select
-          name="faculty"
-          value={selectedFaculty}
-          onChange={handleFacultyChange}
-          options={facultyOptions}
-          placeholder="All Faculties"
-        />
-        <Select
-          name="department"
-          value={selectedDepartment}
-          onChange={(e) => setSelectedDepartment(e.target.value)}
-          options={departmentOptions}
-          placeholder="All Departments"
-          disabled={!selectedFaculty}
-        />
+
+        <div>
+          <label className="block text-xs font-medium text-neutral-500 mb-1">Department</label>
+          <Select
+            name="department"
+            value={selectedDepartment}
+            onChange={(e) => { setSelectedDepartment(e.target.value); setPage(1); }}
+            options={departmentOptions}
+            placeholder="All"
+            disabled={!selectedFaculty}
+            className="text-xs sm:text-sm py-1 h-8 sm:h-9"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-neutral-500 mb-1">Level</label>
+          <Select
+            name="level"
+            value={selectedLevel}
+            onChange={(e) => { setSelectedLevel(e.target.value); setPage(1); }}
+            options={levelOptions}
+            placeholder="All"
+            className="text-xs sm:text-sm py-1 h-8 sm:h-9"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-neutral-500 mb-1">Session</label>
+          <Select
+            name="session"
+            value={selectedSession}
+            onChange={(e) => { setSelectedSession(e.target.value); setPage(1); }}
+            options={sessionOptions}
+            placeholder="Current"
+            className="text-xs sm:text-sm py-1 h-8 sm:h-9"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs font-medium text-neutral-500 mb-1">Semester</label>
+          <Select
+            name="semester"
+            value={selectedSemester}
+            onChange={(e) => { setSelectedSemester(e.target.value); setPage(1); }}
+            options={semesterOptions}
+            placeholder="Current"
+            className="text-xs sm:text-sm py-1 h-8 sm:h-9"
+          />
+        </div>
+      </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Table Container - Flex Grow with Internal Scroll */}
+      <div className="flex-1 bg-white rounded-lg shadow-sm border border-neutral-200 overflow-hidden flex flex-col min-h-0">
+        <div className="overflow-auto flex-1 overscroll-contain">
           <table className="w-full">
             <thead className="bg-neutral-50 border-b border-neutral-200">
               <tr>
-                <th className="px-3 sm:px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-neutral-700">Book</th>
+                <th className="px-3 sm:px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-neutral-700 w-12 bg-neutral-50 sticky top-0 z-10">S/N</th>
+                <th className="px-3 sm:px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-neutral-700 bg-neutral-50 sticky top-0 z-10">Book</th>
                 <th className="px-3 sm:px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-neutral-700 hidden sm:table-cell">Course</th>
                 <th className="px-3 sm:px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-neutral-700 hidden md:table-cell">Department</th>
                 <th className="px-3 sm:px-4 py-2.5 text-left text-xs sm:text-sm font-semibold text-neutral-700">Price</th>
@@ -215,19 +336,22 @@ export default function AdminBooksPage() {
             <tbody className="divide-y divide-neutral-100">
               {isLoading ? (
                 <tr>
-                  <td colSpan="7" className="px-4 py-6 text-center text-neutral-500 text-sm">
+                  <td colSpan="8" className="px-4 py-6 text-center text-neutral-500 text-sm">
                     Loading books...
                   </td>
                 </tr>
               ) : books.length === 0 ? (
                 <tr>
-                  <td colSpan="7" className="px-4 py-6 text-center text-neutral-500 text-sm">
+                  <td colSpan="8" className="px-4 py-6 text-center text-neutral-500 text-sm">
                     No books found
                   </td>
                 </tr>
               ) : (
-                books.map((book) => (
+                books.map((book, index) => (
                   <tr key={book.id} className="hover:bg-neutral-50 transition-colors">
+                    <td className="px-3 sm:px-4 py-3 text-sm text-neutral-500 font-mono">
+                      {(page - 1) * limit + index + 1}
+                    </td>
                     <td className="px-3 sm:px-4 py-3">
                       <div className="font-medium text-neutral-900 text-sm whitespace-normal">{book.title}</div>
                       <div className="text-xs text-neutral-500 mt-0.5">{book.level}</div>
@@ -269,6 +393,67 @@ export default function AdminBooksPage() {
           </table>
         </div>
       </div>
+
+      {/* Pagination - Separate Sticky Footer */}
+      {!isLoading && pagination.total > 0 && (
+        <div className="flex items-center justify-between gap-2 px-2 py-1.5 bg-white border border-neutral-200 rounded-lg shadow-sm text-xs shrink-0 mt-2">
+          <div className="text-neutral-600">
+            <span className="font-medium">{Math.min((page - 1) * limit + 1, pagination.total)}</span>-
+            <span className="font-medium">{Math.min(page * limit, pagination.total)}</span> of{' '}
+            <span className="font-medium">{pagination.total}</span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page === 1}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-neutral-300 text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Previous
+            </button>
+            
+            <div className="flex items-center gap-1">
+              {[...Array(pagination.totalPages)].map((_, i) => {
+                const pageNum = i + 1;
+                if (
+                  pageNum === 1 ||
+                  pageNum === pagination.totalPages ||
+                  (pageNum >= page - 1 && pageNum <= page + 1)
+                ) {
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setPage(pageNum)}
+                      className={`w-8 h-8 flex items-center justify-center rounded-md text-sm font-medium transition-colors ${
+                        page === pageNum
+                          ? 'bg-primary text-white border border-primary'
+                          : 'bg-white text-neutral-700 border border-neutral-300 hover:bg-neutral-50'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                }
+                if (
+                  (pageNum === page - 2 && pageNum > 2) ||
+                  (pageNum === page + 2 && pageNum < pagination.totalPages - 1)
+                ) {
+                  return <span key={pageNum} className="px-1 text-neutral-400">...</span>;
+                }
+                return null;
+              })}
+            </div>
+
+            <button
+              onClick={() => setPage(p => Math.min(pagination.totalPages, p + 1))}
+              disabled={page === pagination.totalPages}
+              className="px-3 py-1.5 text-sm font-medium rounded-md border border-neutral-300 text-neutral-700 hover:bg-neutral-50 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+            </button>
+          </div>
+        </div>
+      )}
 
       <DeleteConfirmModal
         isOpen={deleteModal.isOpen}

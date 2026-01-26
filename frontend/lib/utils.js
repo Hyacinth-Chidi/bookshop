@@ -8,14 +8,16 @@ export function cn(...inputs) {
 /**
  * Format price to Nigerian Naira
  * @param {number} price - Price to format
+ * @param {boolean} showDecimals - Whether to show decimal places (kobo)
  * @returns {string} Formatted price
  */
-export const formatPrice = (price) => {
-  if (!price && price !== 0) return '₦0.00';
+export const formatPrice = (price, showDecimals = false) => {
+  if (!price && price !== 0) return '₦0';
   return new Intl.NumberFormat('en-NG', {
     style: 'currency',
     currency: 'NGN',
-    minimumFractionDigits: 2,
+    minimumFractionDigits: showDecimals ? 2 : 0,
+    maximumFractionDigits: showDecimals ? 2 : 0,
   }).format(price);
 };
 

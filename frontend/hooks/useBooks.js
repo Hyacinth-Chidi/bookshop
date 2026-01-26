@@ -5,8 +5,8 @@
  * TanStack Query hooks for book data fetching and mutations
  */
 
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getAllBooks, getBookById, getFilterOptions } from '@/lib/bookApi';
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { getAllBooks, getBookById, getFilterOptions, getReportBooks } from '@/lib/bookApi';
 import { createBook, updateBook, deleteBook } from '@/lib/adminApi';
 import toast from 'react-hot-toast';
 
@@ -18,6 +18,7 @@ export const bookKeys = {
   details: () => [...bookKeys.all, 'detail'],
   detail: (id) => [...bookKeys.details(), id],
   filterOptions: () => [...bookKeys.all, 'filterOptions'],
+  report: (filters) => [...bookKeys.all, 'report', filters],
 };
 
 /**
@@ -29,6 +30,7 @@ export function useBooks(filters = {}, options = {}) {
     queryKey: bookKeys.list(filters),
     queryFn: () => getAllBooks(filters),
     select: (data) => ({ books: data.data, pagination: data.pagination }),
+    placeholderData: keepPreviousData,
     enabled: Boolean(enabled),
     ...restOptions,
   });
@@ -55,6 +57,20 @@ export function useFilterOptions() {
     queryFn: getFilterOptions,
     staleTime: 10 * 60 * 1000, // Cache for 10 mins (rarely changes)
     select: (data) => data.data,
+  });
+}
+
+/**
+ * Fetch all books for report (no limit)
+ */
+export function useReportBooks(filters = {}, options = {}) {
+  const { enabled = true, ...restOptions } = options;
+  return useQuery({
+    queryKey: bookKeys.report(filters),
+    queryFn: () => getReportBooks(filters),
+    select: (data) => data.data,
+    enabled: Boolean(enabled),
+    ...restOptions,
   });
 }
 

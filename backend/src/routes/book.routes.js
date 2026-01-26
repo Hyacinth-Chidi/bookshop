@@ -19,6 +19,13 @@ const router = express.Router();
 router.get('/filters/options', bookController.getFilterOptions);
 
 /**
+ * @route   GET /api/books/report
+ * @desc    Get all books for report (no limit)
+ * @access  Public
+ */
+router.get('/report', bookController.getReportBooks);
+
+/**
  * @route   GET /api/books
  * @desc    Get all books with search and filters
  * @access  Public

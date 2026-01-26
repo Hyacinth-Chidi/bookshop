@@ -44,3 +44,12 @@ export const searchBooks = async (query, filters = {}) => {
     params: { search: query, ...filters },
   });
 };
+
+/**
+ * Get all books for report (no limit)
+ * @param {Object} params - Query parameters (session, semester)
+ * @returns {Promise}
+ */
+export const getReportBooks = async (params = {}) => {
+  return await api.get('/books/report', { params });
+};

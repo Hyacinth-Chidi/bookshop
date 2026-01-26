@@ -102,7 +102,7 @@ function CheckoutContent() {
               <h3 className="font-medium text-neutral-900">{book.title}</h3>
               <p className="text-sm text-neutral-500">{book.courseCode}</p>
             </div>
-            <p className="font-semibold text-neutral-900">{formatPrice(book.price)}</p>
+            <p className="font-semibold text-neutral-900">{formatPrice(book.price, true)}</p>
           </div>
 
           <div className="py-4 border-b border-neutral-200">
@@ -121,7 +121,7 @@ function CheckoutContent() {
 
           <div className="flex items-center justify-between py-4">
             <span className="text-lg font-semibold text-neutral-900">Total</span>
-            <span className="text-2xl font-bold text-primary">{formatPrice(totalAmount)}</span>
+            <span className="text-2xl font-bold text-primary">{formatPrice(totalAmount, true)}</span>
           </div>
         </div>
 
@@ -145,7 +145,7 @@ function CheckoutContent() {
           disabled={loading}
         >
           <ShoppingCart className="w-5 h-5 mr-2" />
-          Pay {formatPrice(totalAmount)}
+          Pay {formatPrice(totalAmount, true)}
         </Button>
 
         <div className="mt-4 text-center">

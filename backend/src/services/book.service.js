@@ -393,3 +393,33 @@ export const getFilterOptions = async () => {
 
   return result;
 };
+// Get all books for report (no limit) - grouped by session/semester
+export const getReportBooks = async (query = {}) => {
+  const { session, semester } = query;
+
+  // Build filter conditions
+  const where = {};
+  if (session) where.session = session;
+  if (semester) where.semester = semester;
+
+  // Fetch ALL books without limit
+  const books = await prisma.book.findMany({
+    where,
+    include: {
+      department: {
+        select: { id: true, name: true, facultyId: true }
+      },
+      faculty: {
+        select: { id: true, name: true }
+      }
+    },
+    orderBy: [
+      { faculty: { name: 'asc' } },
+      { department: { name: 'asc' } },
+      { level: 'asc' },
+      { title: 'asc' }
+    ]
+  });
+
+  return { books, total: books.length };
+};

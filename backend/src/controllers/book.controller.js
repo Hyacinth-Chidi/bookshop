@@ -100,3 +100,15 @@ export const getFilterOptions = async (req, res, next) => {
     next(error);
   }
 };
+/**
+ * Get all books for report (no limit)
+ * @route GET /api/books/report (Public)
+ */
+export const getReportBooks = async (req, res, next) => {
+  try {
+    const result = await bookService.getReportBooks(req.query);
+    return successResponse(res, result, 'Report books retrieved successfully');
+  } catch (error) {
+    next(error);
+  }
+};

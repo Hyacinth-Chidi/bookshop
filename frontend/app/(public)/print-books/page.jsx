@@ -7,8 +7,11 @@ import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
 import Select from '@/components/shared/Select';
 import Button from '@/components/shared/Button';
-import { useFilterOptions, useBooks } from '@/hooks/useBooks';
-import { useSystemSettings } from '@/hooks/useSettings';
+import { useBooks } from '@/hooks/useBooks';
+import { usePrintOptions } from '@/hooks/usePrintOptions';
+import PrintHeader from '@/components/print/PrintHeader';
+import PrintStyles from '@/components/print/PrintStyles';
+import SessionSemesterSelector from '@/components/print/SessionSemesterSelector';
 import { formatPrice } from '@/lib/utils';
 import { Printer, FileText, Loader2 } from 'lucide-react';
 
@@ -20,33 +23,38 @@ export default function PrintBooksPage() {
     level: '',
   });
   const [showResults, setShowResults] = useState(false);
+  
+  const {
+    sessionOptions,
+    semesterOptions,
+    options,
+    activeSession,
+    activeSemester,
+    selectedSession,
+    selectedSemester,
+    setSelectedSession,
+    setSelectedSemester,
+    optionsLoading,
+  } = usePrintOptions();
 
-  // Fetch filter options
-  const { data: options, isLoading: optionsLoading } = useFilterOptions();
-  const { data: settings } = useSystemSettings();
-
-  // Build query params for fetching books
   const queryParams = {
     facultyId: filters.facultyId,
     departmentId: filters.departmentId,
     level: filters.level,
-    session: settings?.currentSession || '',
-    semester: settings?.currentSemester || '',
+    session: activeSession,
+    semester: activeSemester,
     inStock: 'true',
     limit: 100, // Get all books for the selection
   };
 
-  // Only fetch when showResults is true AND all filters are selected
   const shouldFetch = Boolean(showResults && filters.facultyId && filters.departmentId && filters.level);
   
-  // Fetch books when filters are applied
   const { data: booksData, isLoading: booksLoading } = useBooks(
     queryParams,
     { enabled: shouldFetch }
   );
   const books = booksData?.books || [];
 
-  // Filter options
   const facultyOptions = [
     { value: '', label: 'Select Faculty' },
     ...(options?.faculties || []).map(f => ({ value: f.id, label: f.name }))
@@ -64,19 +72,15 @@ export default function PrintBooksPage() {
     ...(options?.levels || []).map(l => ({ value: l, label: l }))
   ];
 
-  // Get selected names for display
   const selectedFaculty = options?.faculties?.find(f => f.id === filters.facultyId);
   const selectedDepartment = options?.departments?.find(d => d.id === filters.departmentId);
 
-  // Calculate total price
   const totalPrice = books.reduce((sum, book) => sum + (book.price || 0), 0);
 
-  // Handle filter changes
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters(prev => {
       const newFilters = { ...prev, [name]: value };
-      // Reset department when faculty changes
       if (name === 'facultyId') {
         newFilters.departmentId = '';
       }
@@ -85,7 +89,6 @@ export default function PrintBooksPage() {
     setShowResults(false);
   };
 
-  // Generate book list
   const handleGenerate = () => {
     if (!filters.facultyId || !filters.departmentId || !filters.level) {
       alert('Please select Faculty, Department, and Level');
@@ -94,7 +97,6 @@ export default function PrintBooksPage() {
     setShowResults(true);
   };
 
-  // Print the book list
   const handlePrint = () => {
     window.print();
   };
@@ -154,6 +156,31 @@ export default function PrintBooksPage() {
               />
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <Select
+                label="Session"
+                name="session"
+                value={selectedSession || ''}
+                onChange={(e) => {
+                  setSelectedSession(e.target.value || null);
+                  setShowResults(false);
+                }}
+                options={sessionOptions}
+                disabled={optionsLoading}
+              />
+              <Select
+                label="Semester"
+                name="semester"
+                value={selectedSemester || ''}
+                onChange={(e) => {
+                  setSelectedSemester(e.target.value || null);
+                  setShowResults(false);
+                }}
+                options={semesterOptions}
+                disabled={optionsLoading}
+              />
+            </div>
+
             <div className="flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={handleGenerate}
@@ -203,25 +230,29 @@ export default function PrintBooksPage() {
                     </p>
                   </div>
                   
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-neutral-200">
-                          <th className="text-left py-3 px-2 font-semibold text-neutral-700">S/N</th>
-                          <th className="text-left py-3 px-2 font-semibold text-neutral-700">Title</th>
-                          <th className="text-left py-3 px-2 font-semibold text-neutral-700">Course Code</th>
-                          <th className="text-left py-3 px-2 font-semibold text-neutral-700">Lecturer</th>
-                          <th className="text-right py-3 px-2 font-semibold text-neutral-700">Price</th>
+                  <div className="overflow-x-auto border border-neutral-200 rounded-lg">
+                    <table className="w-full min-w-[700px] text-sm text-left">
+                      <thead className="bg-neutral-900 text-white uppercase text-xs tracking-wider">
+                        <tr>
+                          <th className="py-3 px-4 font-bold w-12 text-center">S/N</th>
+                          <th className="py-3 px-4 font-bold">Book Title</th>
+                          <th className="py-3 px-4 font-bold w-32 text-center">Course Code</th>
+                          <th className="py-3 px-4 font-bold">Lecturer/Author</th>
+                          <th className="py-3 px-4 font-bold text-right w-32">Price</th>
                         </tr>
                       </thead>
-                      <tbody>
+                      <tbody className="divide-y divide-neutral-200 bg-white">
                         {books.map((book, index) => (
-                          <tr key={book.id} className="border-b border-neutral-100">
-                            <td className="py-3 px-2 text-neutral-600">{index + 1}</td>
-                            <td className="py-3 px-2 text-neutral-900 font-medium">{book.title}</td>
-                            <td className="py-3 px-2 text-neutral-600">{book.courseCode}</td>
-                            <td className="py-3 px-2 text-neutral-600">{book.courseLecturer || '-'}</td>
-                            <td className="py-3 px-2 text-neutral-900 font-semibold text-right">
+                          <tr key={book.id} className="hover:bg-neutral-50 transition-colors">
+                            <td className="py-3 px-4 text-center font-medium text-neutral-500">{index + 1}</td>
+                            <td className="py-3 px-4 font-semibold text-neutral-800">{book.title}</td>
+                            <td className="py-3 px-4 text-center">
+                              <span className="inline-block bg-neutral-100 text-neutral-800 rounded px-2 py-1 text-xs font-mono font-bold border border-neutral-300">
+                                {book.courseCode}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-neutral-600">{book.courseLecturer || '-'}</td>
+                            <td className="py-3 px-4 text-right font-bold text-neutral-900">
                               {formatPrice(book.price)}
                             </td>
                           </tr>
@@ -236,31 +267,14 @@ export default function PrintBooksPage() {
         </div>
       </main>
 
-      {/* Print Layout - Only visible when printing */}
       <div className="hidden print:block print:p-8" ref={printRef}>
         {/* Print Header */}
-        <div className="border-b-2 border-neutral-900 pb-4 mb-6">
-          <div className="flex items-center gap-6">
-            <Image
-              src="/esut logo.png"
-              alt="ESUT Logo"
-              width={80}
-              height={80}
-              className="object-contain grayscale"
-              unoptimized
-            />
-            <div className="flex-1">
-              <h1 className="text-2xl font-bold text-neutral-900 uppercase tracking-wide mb-1">
-                ENUGU STATE UNIVERSITY OF SCIENCE AND TECHNOLOGY
-              </h1>
-              <h2 className="text-xl font-bold text-neutral-800 uppercase">
-                Student Departmental TextBook List
-              </h2>
-            </div>
-          </div>
-        </div>
+        <PrintHeader
+          subtitle="Student Departmental TextBook List"
+          session={activeSession}
+          semester={activeSemester}
+        />
 
-        {/* Print Info */}
         <div className="grid grid-cols-2 gap-4 mb-6 text-sm">
           <div>
             <p><strong className="uppercase">Faculty:</strong> {selectedFaculty?.name || '-'}</p>
@@ -268,32 +282,31 @@ export default function PrintBooksPage() {
             <p><strong className="uppercase">Level:</strong> {filters.level || '-'}</p>
           </div>
           <div className="text-right">
-            <p><strong className="uppercase">Session:</strong> {settings?.currentSession || '-'}</p>
-            <p><strong className="uppercase">Semester:</strong> {settings?.currentSemester || '-'}</p>
+            <p><strong className="uppercase">Session:</strong> {activeSession || '-'}</p>
+            <p><strong className="uppercase">Semester:</strong> {activeSemester || '-'}</p>
             <p><strong className="uppercase">Date:</strong> {currentDate}</p>
           </div>
         </div>
 
-        {/* Print Table */}
-        <table className="w-full text-sm border-collapse border border-neutral-400 mb-6">
+        <table className="w-full text-sm border-collapse border-2 border-black mb-6">
           <thead>
-            <tr className="bg-neutral-100">
-              <th className="border border-neutral-400 py-2 px-3 text-left w-12">S/N</th>
-              <th className="border border-neutral-400 py-2 px-3 text-left">Book Title</th>
-              <th className="border border-neutral-400 py-2 px-3 text-left w-28">Course Code</th>
-              <th className="border border-neutral-400 py-2 px-3 text-left">Lecturer</th>
-              <th className="border border-neutral-400 py-2 px-3 text-right w-24">Price (₦)</th>
+            <tr className="border-b-2 border-black bg-gray-100 print:bg-gray-200">
+              <th className="text-center py-2 px-2 w-12 border-r border-black font-bold">S/N</th>
+              <th className="text-left py-2 px-2 border-r border-black font-bold">Book Title</th>
+              <th className="text-center py-2 px-2 w-24 border-r border-black font-bold">Course Code</th>
+              <th className="text-left py-2 px-2 border-r border-black font-bold whitespace-nowrap">Lecturer/Author</th>
+              <th className="text-center py-2 px-2 w-28 font-bold border-black">Price</th>
             </tr>
           </thead>
           <tbody>
             {books.map((book, index) => (
-              <tr key={book.id}>
-                <td className="border border-neutral-400 py-2 px-3">{index + 1}</td>
-                <td className="border border-neutral-400 py-2 px-3">{book.title}</td>
-                <td className="border border-neutral-400 py-2 px-3">{book.courseCode}</td>
-                <td className="border border-neutral-400 py-2 px-3">{book.courseLecturer || '-'}</td>
-                <td className="border border-neutral-400 py-2 px-3 text-right">
-                  {formatPrice(book.price).replace('₦', '')}
+              <tr key={book.id} className="border-b border-black last:border-b-0 hover:bg-gray-50">
+                <td className="py-1.5 px-2 text-center border-r border-black">{index + 1}</td>
+                <td className="py-1.5 px-2 border-r border-black font-medium">{book.title}</td>
+                <td className="py-1.5 px-2 text-center border-r border-black font-mono">{book.courseCode}</td>
+                <td className="py-1.5 px-2 border-r border-black">{book.courseLecturer || '-'}</td>
+                <td className="py-1.5 px-2 text-center font-bold">
+                  {formatPrice(book.price)}
                 </td>
               </tr>
             ))}
@@ -320,6 +333,8 @@ export default function PrintBooksPage() {
         <Footer />
 
       </div>
+
+      <PrintStyles />
 
     </div>
   );
