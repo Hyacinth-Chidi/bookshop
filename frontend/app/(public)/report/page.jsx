@@ -3,7 +3,6 @@
 import { useState, useMemo, Fragment } from 'react';
 import Navbar from '@/components/layout/Navbar';
 import Footer from '@/components/layout/Footer';
-import Select from '@/components/shared/Select';
 import Button from '@/components/shared/Button';
 import { useReportBooks } from '@/hooks/useBooks';
 import { usePrintOptions } from '@/hooks/usePrintOptions';
@@ -124,11 +123,9 @@ export default function ReportPage() {
 
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-neutral-900 mb-2">
-              All Books Report
+              List of Books and their Prices
             </h1>
-            <p className="text-neutral-500">
-              Generate a comprehensive report of all books by session and semester
-            </p>
+            
           </div>
 
           <div className="bg-white rounded-xl shadow-sm border border-neutral-200 p-6 mb-8">
@@ -240,7 +237,7 @@ export default function ReportPage() {
 
       <div className="hidden print:block print:p-4" id="print-content">
         <PrintHeader
-          subtitle="Complete Book List Report"
+          subtitle="List Of Books And Their Prices"
           session={activeSession}
           semester={activeSemester}
         />
