@@ -116,6 +116,11 @@ export default function AdminBooksPage() {
     selectedLevel, setSelectedLevel
   } = useAdminPreferences();
 
+  // TanStack Query books
+  const { data: faculties = [] } = useFaculties();
+  const { data: filterOptions } = useFilterOptions();
+  const { data: settings } = useSystemSettings();
+  
   // Derived state for available departments
   const availableDepartments = selectedFaculty 
     ? faculties.find(f => f.id === selectedFaculty)?.departments || [] 
@@ -125,10 +130,6 @@ export default function AdminBooksPage() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(50);
 
-  // TanStack Query hooks
-  const { data: faculties = [] } = useFaculties();
-  const { data: filterOptions } = useFilterOptions();
-  const { data: settings } = useSystemSettings();
   const { data, isLoading, isFetching } = useBooks({
     page,
     limit,
